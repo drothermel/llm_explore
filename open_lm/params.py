@@ -202,9 +202,6 @@ def check_args(args):
             f"Unknown scheduler, {args.lr_scheduler}. Available options are: cosine, const, const-cooldown."
         )
 
-    if args.experimental_meta_device:
-        print("WARNING: Meta device initialization requested, but this is not currently fully tested.")
-
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -685,12 +682,6 @@ def parse_args(args):
         action="store_true",
         default=False,
         help="If true, ignore parse errors in data loading. This should ideally be False, as errors in dataloading can point to bigger issues in your dataset. However, this can be useful when training on a large dataset which has a couple errors.",
-    )
-    parser.add_argument(
-        "--experimental-meta-device",
-        action="store_true",
-        default=False,
-        help="If True, initialize the model on meta device. This can be useful for loading large models, but is not currently fully tested.",
     )
     parser.add_argument(
         "--force-distributed",
