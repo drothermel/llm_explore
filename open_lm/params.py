@@ -701,18 +701,6 @@ def parse_args(args):
     )
 
     parser.add_argument(
-        "--averagers",
-        type=str,
-        default=None,
-        help="Optinoally average checkpoints along the trajectory.",
-    )
-    parser.add_argument(
-        "--log-avg-model-training-loss",
-        type=int,
-        default=0,
-        help="Whether to log the average model training loss. if not 0, it will log the average loss over the specified number of steps.",
-    )
-    parser.add_argument(
         "--data-tolerate-error-p",
         type=float,
         default=0.09,  # Roughly the number required to not repeat more than 10% of data.
