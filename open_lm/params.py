@@ -59,50 +59,6 @@ def add_model_args(parser):
         help="Type of positional embedding to use. This might be overridden by the model config.",
     )
     parser.add_argument(
-        "--moe-freq",
-        type=int,
-        default=0,
-        help="if set > 0, we will add MoE layer to every moe_freq layer.",
-    )
-    parser.add_argument(
-        "--moe-num-experts",
-        type=int,
-        default=None,
-        help="Number of experts for MoE",
-    )
-
-    parser.add_argument(
-        "--moe-weight-parallelism",
-        action="store_true",
-        help="Add weight parallelism to MoE",
-    )
-
-    parser.add_argument(
-        "--moe-expert-model-parallelism",
-        action="store_true",
-        help="Add expert model parallelism to MoE",
-    )
-
-    parser.add_argument(
-        "--moe-capacity-factor",
-        type=float,
-        default=1.25,
-        help="MoE capacity factor",
-    )
-
-    parser.add_argument(
-        "--moe-loss-weight",
-        type=float,
-        default=0.1,
-        help="MoE loss weight",
-    )
-    parser.add_argument(
-        "--moe-top-k",
-        type=int,
-        default=2,
-        help="MoE top k experts",
-    )
-    parser.add_argument(
         "--attn-name",
         type=str,
         default="auto",
@@ -248,16 +204,6 @@ def check_args(args):
 
     if args.experimental_meta_device:
         print("WARNING: Meta device initialization requested, but this is not currently fully tested.")
-
-    if args.moe_freq != 0 or args.moe_num_experts is not None:
-        assert (
-            args.moe_freq != 0 and args.moe_num_experts is not None
-        ), "For MoE training, pass --moe-freq and --moe-num-experts"
-
-        try:
-            import megablocks
-        except ImportError:
-            raise ValueError("Megablocks not installed. To train MoE, install with pip install megablocks.")
 
 
 def parse_args(args):

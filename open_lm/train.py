@@ -11,14 +11,6 @@ from torch.distributed.distributed_c10d import ReduceOp
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 try:
-    from megablocks.layers.moe import batched_load_balancing_loss, clear_load_balancing_loss
-    from megablocks.layers.arguments import Arguments as MoEArgs
-except ImportError:
-    batched_load_balancing_loss = None
-    clear_load_balancing_loss = None
-    MoEArgs = None
-
-try:
     import wandb
 except ImportError:
     wandb = None
@@ -65,7 +57,6 @@ def train_one_epoch(
     sample_digits = math.ceil(math.log(dataloader.num_samples + 1, 10))
 
     losses_m = AverageMeter()
-    load_balancing_losses_m = AverageMeter()
     batch_time_m = AverageMeter()
     data_time_m = AverageMeter()
     forward_time_m = AverageMeter()
@@ -83,22 +74,6 @@ def train_one_epoch(
     end = time.time()
 
     data_iterator = iter(dataloader)
-
-    if args.moe_freq > 0:
-        # these MoEArgs are necessary for logging load balancing.
-        moe_args = MoEArgs(
-            hidden_size=model.dim,
-            ffn_hidden_size=model.dim * 4,
-            moe_num_experts=args.moe_num_experts,
-            num_layers=model.n_layers // args.moe_freq,
-            moe_expert_model_parallelism=True,
-            moe_top_k=args.moe_top_k,
-            device=torch.cuda.current_device(),
-            moe_capacity_factor=args.moe_capacity_factor,
-            moe_loss_weight=args.moe_loss_weight,
-            fp16=False,
-            bf16=False,
-        )
 
     for i in itertools.count():
         if not args.skip_scheduler:
@@ -134,12 +109,7 @@ def train_one_epoch(
                 if args.log_logit_mean:
                     logit_m.update(torch.mean(out).item())
 
-                total_lm_loss = loss(out.reshape(-1, args.vocab_size), targets.reshape(-1))
-                total_loss = total_lm_loss
-                if args.moe_freq > 0:
-                    total_load_balancing_loss = batched_load_balancing_loss(moe_args)
-                    clear_load_balancing_loss()
-                    total_loss += total_load_balancing_loss
+                total_loss = loss(out.reshape(-1, args.vocab_size), targets.reshape(-1))
 
             backward_start = time.time()
             backward(total_loss, scaler)
@@ -180,16 +150,11 @@ def train_one_epoch(
                         if args.log_logit_mean:
                             logit_m.update(torch.mean(out).item())
 
-                        local_lm_loss = (
+                        local_loss = (
                             loss(out.reshape(-1, args.vocab_size), targets_ii.reshape(-1))
                             * inputs_ii.shape[0]
                             / inputs.shape[0]
                         )
-                    local_loss = local_lm_loss
-                    if args.moe_freq > 0:
-                        local_load_balancing_loss = batched_load_balancing_loss(moe_args)
-                        clear_load_balancing_loss()
-                        local_loss += local_load_balancing_loss
 
                     backward_start = time.time()
                     backward(local_loss, scaler)
@@ -209,9 +174,7 @@ def train_one_epoch(
                                         / inputs.shape[0]
                                     )
                 if ii == 0:
-                    total_lm_loss = local_lm_loss
-                    if args.moe_freq > 0:
-                        total_load_balancing_loss = local_load_balancing_loss
+                    total_loss = local_loss
                     if (
                         averagers is not None
                         and args.log_avg_model_training_loss
@@ -220,9 +183,7 @@ def train_one_epoch(
                         for key, averager in averagers.avgs_dict.items():
                             total_loss_avg[key] = local_avg_losses[key]
                 else:
-                    total_lm_loss += local_lm_loss
-                    if args.moe_freq > 0:
-                        total_load_balancing_loss += local_load_balancing_loss
+                    total_loss = local_loss
                     if (
                         averagers is not None
                         and args.log_avg_model_training_loss
@@ -233,10 +194,6 @@ def train_one_epoch(
 
             forward_time_m.update(forward_total_time)
             backward_time_m.update(backward_total_time)
-
-            total_loss = total_lm_loss
-            if args.moe_freq > 0:
-                total_loss += total_load_balancing_loss
 
         optim_step_start = time.time()
         if scaler is not None:
@@ -269,8 +226,6 @@ def train_one_epoch(
             if averagers is not None and args.log_avg_model_training_loss and i % args.log_avg_model_training_loss == 0:
                 for key, value in total_loss_avg.items():
                     dist.all_reduce(value, op=ReduceOp.AVG)
-            if args.moe_freq > 0:
-                dist.all_reduce(total_load_balancing_loss, op=ReduceOp.AVG)
         sync_time_m.update(time.time() - sync_start)
 
         batch_time_m.update(time.time() - end)
@@ -282,11 +237,7 @@ def train_one_epoch(
             batch_size = len(inputs)
             # update the loss meter with the global loss tensor every iteration, so that the logging is of the avg of loss of the last
             # args.log_every_n_steps iterations
-            if args.moe_freq > 0:
-                losses_m.update(global_loss_tensor.item() - total_load_balancing_loss.item(), batch_size)
-                load_balancing_losses_m.update(total_load_balancing_loss.item(), batch_size)
-            else:
-                losses_m.update(global_loss_tensor.item(), batch_size)
+            losses_m.update(global_loss_tensor.item(), batch_size)
             if averagers is not None and args.log_avg_model_training_loss and i % args.log_avg_model_training_loss == 0:
                 for key, value in total_loss_avg.items():
                     losses_avg_m[key].update(value.item(), batch_size)
@@ -299,15 +250,10 @@ def train_one_epoch(
                 # torch.distributed.all_gather(gathered_loss, total_loss)
 
                 # losses_m.update(sum(gathered_loss).item() / args.world_size, batch_size * args.world_size)
-                if args.moe_freq > 0:
-                    losses_m.update(global_loss_tensor.item() - total_load_balancing_loss.item(), batch_size)
-                    load_balancing_losses_m.update(total_load_balancing_loss.item(), batch_size)
-                else:
-                    losses_m.update(global_loss_tensor.item(), batch_size)
+                losses_m.update(global_loss_tensor.item(), batch_size)
                 samples_per_second = inputs.numel() * args.world_size / batch_time_m.val
                 samples_per_second_per_gpu = inputs.numel() / batch_time_m.val
                 loss_str = f"Loss: {losses_m.avg:.3f}"
-                loss_str += f" LB-Loss: {load_balancing_losses_m.avg:.3f}" if args.moe_freq > 0 else ""
                 logging.info(
                     f"Train Epoch: {epoch} [{num_samples:>{sample_digits}}/{samples_per_epoch} ({percent_complete:.0f}%)] "
                     f"{loss_str} "
@@ -319,7 +265,6 @@ def train_one_epoch(
                 # Save train loss / etc. Using non avg meter values as loggers have their own smoothing
                 log_data = {
                     "loss": losses_m.val,
-                    "load_balancing_loss": load_balancing_losses_m.val,
                     "data_time": data_time_m.val,
                     "batch_time": batch_time_m.val,
                     "forward_time": forward_time_m.val,
