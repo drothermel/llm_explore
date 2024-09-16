@@ -99,13 +99,6 @@ def terminate_sync_process(p: multiprocessing.Process):
         p.terminate()
 
 
-# Note: we are not currently using this save function.
-def pt_save(pt_obj, file_path):
-    of = fsspec.open(file_path, "wb")
-    with of as f:
-        torch.save(pt_obj, file_path)
-
-
 def _pt_load_s3_cp(file_path, map_location=None):
     cmd = f"aws s3 cp {file_path} -"
     proc = subprocess.Popen(
