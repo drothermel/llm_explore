@@ -15,16 +15,13 @@ from itertools import islice
 import copy
 
 import numpy as np
-import pandas as pd
 import torch
 import webdataset as wds
-from PIL import Image
 
 
 from torch.utils.data import (
     Dataset,
     DataLoader,
-    SubsetRandomSampler,
     IterableDataset,
     get_worker_info,
 )

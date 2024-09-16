@@ -3,18 +3,14 @@ import io
 import json
 import logging
 import multiprocessing
-import os
 import subprocess
-import sys
 import time
-from itertools import cycle, islice
 
 import fsspec
 import numpy as np
 import torch
 
 from typing import List, Optional
-from tqdm import tqdm
 
 from open_lm.distributed import is_master
 
@@ -32,7 +28,7 @@ def remote_sync_s3(local_dir, remote_dir):
         )
         return False
 
-    logging.info(f"Successfully synced with S3 bucket")
+    logging.info("Successfully synced with S3 bucket")
     return True
 
 
@@ -99,7 +95,7 @@ def start_sync_process(sync_every, local_dir, remote_dir, protocol):
 
 def terminate_sync_process(p: multiprocessing.Process):
     if p is not None and p.is_alive():
-        logging.info(f"Terminating remote sync process.")
+        logging.info("Terminating remote sync process.")
         p.terminate()
 
 
@@ -395,7 +391,7 @@ def _multi_epoch_string(
                 num_samples_per_source,
                 next_shard_per_source,
             )
-        except IndexError as e:
+        except IndexError:
             # In this case, we have run out of shards for this pass, so we will start a new pass of our dataset.
             pass_idx += 1
             starting_shard_per_source = [

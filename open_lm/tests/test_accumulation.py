@@ -1,9 +1,7 @@
 from argparse import Namespace
-from math import ceil
 
 import torch
 import unittest
-from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
 

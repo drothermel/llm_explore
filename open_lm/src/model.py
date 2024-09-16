@@ -21,7 +21,7 @@ from open_lm.positional_embedding.llama_rotary import LLaMARotaryWithCast
 from open_lm.positional_embedding.none import identity_with_cast
 
 # from openclip
-_MODEL_CONFIG_PATHS = [Path(__file__).parent / f"model_configs/"]
+_MODEL_CONFIG_PATHS = [Path(__file__).parent / "model_configs/"]
 _MODEL_CONFIGS = {}  # directory (model_name: config) of model architecture configs
 
 

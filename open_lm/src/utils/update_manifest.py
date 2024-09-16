@@ -8,7 +8,6 @@ import re
 import shutil
 import simdjson
 import sys
-import multiprocessing as mp
 from pathlib import Path
 from cloudpathlib import CloudPath
 from tqdm import tqdm

@@ -1,7 +1,5 @@
 import numpy as np
-import torch
 import torch.distributed as dist
-import logging
 
 from open_lm.distributed import is_master
 

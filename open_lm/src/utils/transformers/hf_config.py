@@ -1,10 +1,10 @@
 from dataclasses import fields
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 from argparse import Namespace
 
 from transformers import PretrainedConfig
 
-from open_lm.model import Params, create_params
+from open_lm.model import Params
 
 
 class OpenLMConfig(PretrainedConfig):

@@ -7,7 +7,6 @@ OpenLM configuration
 from transformers import AutoConfig, PretrainedConfig
 from transformers.utils import logging
 
-from open_lm.model import Params
 
 logger = logging.get_logger(__name__)
 

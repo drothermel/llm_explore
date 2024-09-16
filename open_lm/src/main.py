@@ -155,11 +155,11 @@ def load_optimizer(args, model, optimizer, scaler):
                     model=model, optim=optimizer, optim_state_dict=osd
                 )
             optimizer.load_state_dict(osd)
-            logging.info(f"=> resuming optimizer")
+            logging.info("=> resuming optimizer")
         if scaler is not None and "scaler" in checkpoint:
             scaler.load_state_dict(checkpoint["scaler"])
     else:
-        logging.info(f"=> WARNING: not resuming optimizer.")
+        logging.info("=> WARNING: not resuming optimizer.")
 
 
 def load_data_chunks(args):
@@ -328,7 +328,7 @@ def main(args):
         )
 
     if args.fsdp and not args.distributed:
-        raise ValueError(f"--fsdp can only be specified in distributed mode.")
+        raise ValueError("--fsdp can only be specified in distributed mode.")
 
     # get the name of the experiments
     if args.name is None:

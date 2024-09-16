@@ -4,7 +4,6 @@ import math
 import time
 from contextlib import nullcontext
 
-import numpy as np
 import torch
 import torch.distributed as dist
 from torch.distributed.distributed_c10d import ReduceOp
