@@ -16,7 +16,9 @@ class ParseKwargs(argparse.Action):
             try:
                 kw[key] = ast.literal_eval(value)
             except ValueError:
-                kw[key] = str(value)  # fallback to string (avoid need to escape on command line)
+                kw[key] = str(
+                    value
+                )  # fallback to string (avoid need to escape on command line)
         setattr(namespace, self.dest, kw)
 
 
@@ -131,7 +133,9 @@ def maybe_load_config(parser, args):
         if config_key not in default_arg_keys:
             raise ValueError(f"Unknown config key: {config_key}")
         default_value = default_args[config_key]
-        is_valid = check_replacement_type(replacement=config_value, original=default_value)
+        is_valid = check_replacement_type(
+            replacement=config_value, original=default_value
+        )
         if not is_valid:
             raise ValueError(
                 f"Type mismatch (config: {type(config_value)} vs. argparse: {type(default_value)}) with values "
@@ -145,8 +149,12 @@ def maybe_load_config(parser, args):
 def check_args(args):
     # data checks
     if args.dataset_type == "synthetic":
-        assert args.train_data is None, "--train-data must not be specified if --dataset-type='synthetic'"
-        assert args.dataset_manifest is None, "--dataset-manifest must not be specified if --dataset-type='synthetic'"
+        assert (
+            args.train_data is None
+        ), "--train-data must not be specified if --dataset-type='synthetic'"
+        assert (
+            args.dataset_manifest is None
+        ), "--dataset-manifest must not be specified if --dataset-type='synthetic'"
 
     if args.val_data is not None and args.global_val_batch_size is None:
         # Make sure that val batch size is set to micro batch size
@@ -165,26 +173,36 @@ def check_args(args):
         ), "must provide attn-activation, attn-seq-scalar, attn-seq-scalar-alpha to use non-linear-attn"
     else:
         assert (
-            args.attn_activation is None and args.attn_seq_scalar is None and args.attn_seq_scalar_alpha is None
+            args.attn_activation is None
+            and args.attn_seq_scalar is None
+            and args.attn_seq_scalar_alpha is None
         ), "attn-activation, attn-seq-scalar, attn-seq-scalar-alpha must be None unless using non-linear-attn"
 
     # masking checks
     if args.squash_mask_left:
         assert (
-            args.target_mask_left is not None and args.target_mask_individual is not None
+            args.target_mask_left is not None
+            and args.target_mask_individual is not None
         ), "must pass target-mask-left and target-mask-individual to use squash-mask-left"
 
-    if args.target_mask_left is not None and args.target_mask_individual == args.target_mask_left:
+    if (
+        args.target_mask_left is not None
+        and args.target_mask_individual == args.target_mask_left
+    ):
         raise ValueError(
             f"--target-mask-left and --target-mask-individual set to same value of {args.target_mask_left}."
         )
 
     # hf checks
     if args.hf_model is not None and args.hf_seq_len is None:
-        raise ValueError("If passing --hf-model, must also pass --hf-seq-len to be used for training/fine-tuning.")
+        raise ValueError(
+            "If passing --hf-model, must also pass --hf-seq-len to be used for training/fine-tuning."
+        )
 
     if args.hf_model is not None and args.fsdp and args.hf_fsdp_block is None:
-        raise ValueError("If passing --hf-model and --fsdp, must also pass --hf-fsdp-block.")
+        raise ValueError(
+            "If passing --hf-model and --fsdp, must also pass --hf-fsdp-block."
+        )
 
     resume_latest = args.resume == "latest"
 
@@ -193,9 +211,13 @@ def check_args(args):
         # If using remote_sync, need to check the remote instead of the local checkpoints folder.
         if args.remote_sync is not None:
             if args.save_most_recent:
-                raise ValueError("Cannot use save-most-recent with remote_sync and resume latest.")
+                raise ValueError(
+                    "Cannot use save-most-recent with remote_sync and resume latest."
+                )
             if args.remote_sync_protocol != "s3":
-                raise ValueError("Sync protocol not supported when using resume latest.")
+                raise ValueError(
+                    "Sync protocol not supported when using resume latest."
+                )
 
     if args.lr_scheduler not in {"cosine", "const", "const-cooldown"}:
         raise ValueError(
@@ -304,9 +326,15 @@ def parse_args(args):
         default=None,
         help="Optional identifier for the experiment when storing logs. Otherwise use current time.",
     )
-    parser.add_argument("--workers", type=int, default=1, help="Number of dataloader workers per GPU.")
-    parser.add_argument("--global-batch-size", type=int, default=64, help="Global batch size.")
-    parser.add_argument("--epochs", type=int, default=32, help="Number of epochs to train for.")
+    parser.add_argument(
+        "--workers", type=int, default=1, help="Number of dataloader workers per GPU."
+    )
+    parser.add_argument(
+        "--global-batch-size", type=int, default=64, help="Global batch size."
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=32, help="Number of epochs to train for."
+    )
     parser.add_argument(
         "--epochs-cooldown",
         type=int,
@@ -319,7 +347,9 @@ def parse_args(args):
     parser.add_argument("--beta2", type=float, default=0.95, help="Adam beta 2.")
     parser.add_argument("--eps", type=float, default=1.0e-8, help="Adam epsilon.")
     parser.add_argument("--wd", type=float, default=0.2, help="Weight decay.")
-    parser.add_argument("--warmup", type=int, default=10000, help="Number of steps to warmup for.")
+    parser.add_argument(
+        "--warmup", type=int, default=10000, help="Number of steps to warmup for."
+    )
     parser.add_argument(
         "--z-loss-coefficient",
         type=float,
@@ -368,7 +398,9 @@ def parse_args(args):
         default=0.0,
         help="Force the LR to stop decaying at this value.",
     )
-    parser.add_argument("--save-frequency", type=int, default=1, help="How often to save checkpoints.")
+    parser.add_argument(
+        "--save-frequency", type=int, default=1, help="How often to save checkpoints."
+    )
     parser.add_argument(
         "--save-most-recent",
         action="store_true",
@@ -505,7 +537,9 @@ def parse_args(args):
         type=str,
         help="url used to set up distributed training",
     )
-    parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
+    parser.add_argument(
+        "--dist-backend", default="nccl", type=str, help="distributed backend"
+    )
     parser.add_argument(
         "--fsdp",
         default=False,
@@ -567,7 +601,9 @@ def parse_args(args):
         type=str,
         help="Options are ['wandb', 'tensorboard', 'wandb,tensorboard']",
     )
-    parser.add_argument("--wandb-notes", default="", type=str, help="Notes if logging with wandb")
+    parser.add_argument(
+        "--wandb-notes", default="", type=str, help="Notes if logging with wandb"
+    )
     parser.add_argument(
         "--wandb-project-name",
         type=str,
@@ -585,14 +621,18 @@ def parse_args(args):
         type=str,
         nargs="+",
         default=None,
-        help=("Apply model average on these checkpoints with the specified coefficients by --average-coefficients."),
+        help=(
+            "Apply model average on these checkpoints with the specified coefficients by --average-coefficients."
+        ),
     )
     parser.add_argument(
         "--average-coefficients",
         type=float,
         nargs="+",
         default=None,
-        help=("Average the model weights with the specified coefficients, model weights specified by --average."),
+        help=(
+            "Average the model weights with the specified coefficients, model weights specified by --average."
+        ),
     )
     parser.add_argument(
         "--copy-codebase",
@@ -613,7 +653,9 @@ def parse_args(args):
         help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
     )
     parser.add_argument("--seed", type=int, default=0, help="Default random seed.")
-    parser.add_argument("--grad-clip-norm", type=float, default=None, help="Gradient clip.")
+    parser.add_argument(
+        "--grad-clip-norm", type=float, default=None, help="Gradient clip."
+    )
     parser.add_argument(
         "--log-every-n-steps",
         type=int,
@@ -657,7 +699,8 @@ def parse_args(args):
     parser.add_argument(
         "--use-bnb-linear",
         default=None,
-        help="Replace the network linear layers from the bitsandbytes library. " "Allows int8 training/inference, etc.",
+        help="Replace the network linear layers from the bitsandbytes library. "
+        "Allows int8 training/inference, etc.",
     )
     parser.add_argument(
         "--target-mask-left",

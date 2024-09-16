@@ -27,7 +27,9 @@ def remote_sync_s3(local_dir, remote_dir):
         stderr=subprocess.PIPE,
     )
     if result.returncode != 0:
-        logging.error(f"Error: Failed to sync with S3 bucket {result.stderr.decode('utf-8')}")
+        logging.error(
+            f"Error: Failed to sync with S3 bucket {result.stderr.decode('utf-8')}"
+        )
         return False
 
     logging.info(f"Successfully synced with S3 bucket")
@@ -70,7 +72,9 @@ def remote_sync(local_dir, remote_dir, protocol):
         return False
 
 
-def remote_sync_with_expon_backoff(sync_every, local_dir, remote_dir, protocol, max_retries=6):
+def remote_sync_with_expon_backoff(
+    sync_every, local_dir, remote_dir, protocol, max_retries=6
+):
     for i in range(max_retries):
         time.sleep(sync_every * 2**i)
         success = remote_sync(local_dir, remote_dir, protocol)
@@ -108,7 +112,9 @@ def pt_save(pt_obj, file_path):
 
 def _pt_load_s3_cp(file_path, map_location=None):
     cmd = f"aws s3 cp {file_path} -"
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         raise Exception(f"Failed to fetch model from s3. stderr: {stderr.decode()}")
@@ -188,7 +194,9 @@ def enough_shards(shard_lists: List[List[str]], min_shards_needed: int):
     return True
 
 
-def enough_samples(num_samples_per_source: List[List[int]], needed_samples_per_source: List[int]):
+def enough_samples(
+    num_samples_per_source: List[List[int]], needed_samples_per_source: List[int]
+):
     for i, number_per_shard in enumerate(num_samples_per_source):
         if sum(number_per_shard) < needed_samples_per_source[i]:
             return False
@@ -246,7 +254,11 @@ def log_num_checkpoints(total_steps, args):
 
     steps_done = 0
     tokens_seen = 0
-    next_shard_per_source = [0 for _ in range(len(args.dataset_manifest))] if args.dataset_manifest is not None else 0
+    next_shard_per_source = (
+        [0 for _ in range(len(args.dataset_manifest))]
+        if args.dataset_manifest is not None
+        else 0
+    )
     checkpoints_made = 0
 
     if is_master(args):
@@ -264,7 +276,10 @@ def log_num_checkpoints(total_steps, args):
             shard_shuffle_seed=args.shard_shuffle_seed,
         )
         steps_epoch = sum(
-            [(n // (args.workers * args.global_batch_size)) * args.workers for n in num_samples_per_source]
+            [
+                (n // (args.workers * args.global_batch_size)) * args.workers
+                for n in num_samples_per_source
+            ]
         )
         steps_done += steps_epoch
         if steps_done > total_steps:
@@ -273,7 +288,9 @@ def log_num_checkpoints(total_steps, args):
         checkpoints_made += 1
 
         if is_master(args):
-            logging.info(f"==> Checkpoint {checkpoints_made}, steps {steps_done}, tokens seen {tokens_seen}")
+            logging.info(
+                f"==> Checkpoint {checkpoints_made}, steps {steps_done}, tokens seen {tokens_seen}"
+            )
 
     if is_master(args):
         logging.info(
@@ -304,11 +321,23 @@ def get_string_for_epoch(
     """See _single_epoch_string for full docstring."""
     if multi_epoch:
         return _multi_epoch_string(
-            num_samples, starting_points, paths, weights, num_workers_per_gpu, world_size, shard_shuffle_seed
+            num_samples,
+            starting_points,
+            paths,
+            weights,
+            num_workers_per_gpu,
+            world_size,
+            shard_shuffle_seed,
         )
     else:
         return _single_epoch_string(
-            num_samples, starting_points, paths, weights, num_workers_per_gpu, world_size, shard_shuffle_seed
+            num_samples,
+            starting_points,
+            paths,
+            weights,
+            num_workers_per_gpu,
+            world_size,
+            shard_shuffle_seed,
         )
 
 
@@ -324,11 +353,16 @@ def _multi_epoch_string(
     """Return the string for training the shards, while allowing multiple passes over the dataset."""
 
     num_sources = len(paths)
-    total_shards_per_source = [len(get_metadata_file(p, shard_shuffle_seed=None)) for p in paths]
+    total_shards_per_source = [
+        len(get_metadata_file(p, shard_shuffle_seed=None)) for p in paths
+    ]
     pass_idx = starting_shard_per_source[0] // total_shards_per_source[0]
 
     assert all(
-        [starting_shard_per_source[i] // total_shards_per_source[i] == pass_idx for i in range(num_sources)]
+        [
+            starting_shard_per_source[i] // total_shards_per_source[i] == pass_idx
+            for i in range(num_sources)
+        ]
     ), "Passes across sources are not synced."
 
     retries = 3
@@ -336,25 +370,37 @@ def _multi_epoch_string(
     while retries > 0:
         try:
             starting_shard_per_source_single = [
-                starting_shard_per_source[i] % total_shards_per_source[i] for i in range(num_sources)
+                starting_shard_per_source[i] % total_shards_per_source[i]
+                for i in range(num_sources)
             ]
-            shard_strings_per_source, num_samples_per_source, next_shard_per_source = _single_epoch_string(
-                num_samples=num_samples,
-                starting_shard_per_source=starting_shard_per_source_single,
-                paths=paths,
-                weights=weights,
-                num_workers_per_gpu=num_workers_per_gpu,
-                world_size=world_size,
-                shard_shuffle_seed=shard_shuffle_seed + pass_idx if shard_shuffle_seed is not None else None,
+            shard_strings_per_source, num_samples_per_source, next_shard_per_source = (
+                _single_epoch_string(
+                    num_samples=num_samples,
+                    starting_shard_per_source=starting_shard_per_source_single,
+                    paths=paths,
+                    weights=weights,
+                    num_workers_per_gpu=num_workers_per_gpu,
+                    world_size=world_size,
+                    shard_shuffle_seed=shard_shuffle_seed + pass_idx
+                    if shard_shuffle_seed is not None
+                    else None,
+                )
             )
             next_shard_per_source = [
-                next_shard_per_source[i] + pass_idx * total_shards_per_source[i] for i in range(num_sources)
+                next_shard_per_source[i] + pass_idx * total_shards_per_source[i]
+                for i in range(num_sources)
             ]
-            return shard_strings_per_source, num_samples_per_source, next_shard_per_source
+            return (
+                shard_strings_per_source,
+                num_samples_per_source,
+                next_shard_per_source,
+            )
         except IndexError as e:
             # In this case, we have run out of shards for this pass, so we will start a new pass of our dataset.
             pass_idx += 1
-            starting_shard_per_source = [pass_idx * total_shards_per_source[i] for i in range(num_sources)]
+            starting_shard_per_source = [
+                pass_idx * total_shards_per_source[i] for i in range(num_sources)
+            ]
             retries -= 1
 
     raise ValueError(
@@ -414,9 +460,14 @@ def _single_epoch_string(
 
     assert len(weights) == num_sources, "One weight is needed per source."
 
-    needed_samples_per_source = [int(np.ceil(weights[i] * num_samples / sum(weights))) for i in range(num_sources)]
+    needed_samples_per_source = [
+        int(np.ceil(weights[i] * num_samples / sum(weights)))
+        for i in range(num_sources)
+    ]
 
-    manifests = [get_metadata_file(path, shard_shuffle_seed=shard_shuffle_seed) for path in paths]
+    manifests = [
+        get_metadata_file(path, shard_shuffle_seed=shard_shuffle_seed) for path in paths
+    ]
 
     shard_strings_per_source = []
     next_shard_per_source = copy.deepcopy(starting_shard_per_source)
@@ -424,17 +475,21 @@ def _single_epoch_string(
     num_samples_per_source = [[] for _ in range(num_sources)]
 
     total_num_workers = num_workers_per_gpu * world_size
-    while not enough_shards(shard_list_per_source, total_num_workers) or not enough_samples(
-        num_samples_per_source, needed_samples_per_source
-    ):
+    while not enough_shards(
+        shard_list_per_source, total_num_workers
+    ) or not enough_samples(num_samples_per_source, needed_samples_per_source):
         try:
             for i in range(num_sources):
                 # Add shards incrementally
                 shard_name = manifests[i][next_shard_per_source[i]]["shard"]
                 try:
-                    num_samples_shard = manifests[i][next_shard_per_source[i]]["num_sequences"]
+                    num_samples_shard = manifests[i][next_shard_per_source[i]][
+                        "num_sequences"
+                    ]
                 except KeyError:
-                    num_samples_shard = manifests[i][next_shard_per_source[i]]["num_chunks"]
+                    num_samples_shard = manifests[i][next_shard_per_source[i]][
+                        "num_chunks"
+                    ]
 
                 shard_list_per_source[i].append(shard_name)
                 num_samples_per_source[i].append(num_samples_shard)
@@ -460,11 +515,17 @@ def _single_epoch_string(
         # in a worker will likely get discarded.
         num_multiples = len(shard_list_per_source[i]) // total_num_workers
 
-        shard_list_per_source[i] = shard_list_per_source[i][: num_multiples * total_num_workers]
-        num_samples_per_source[i] = num_samples_per_source[i][: num_multiples * total_num_workers]
+        shard_list_per_source[i] = shard_list_per_source[i][
+            : num_multiples * total_num_workers
+        ]
+        num_samples_per_source[i] = num_samples_per_source[i][
+            : num_multiples * total_num_workers
+        ]
 
         # Put back unused shards.
-        next_shard_per_source[i] = starting_shard_per_source[i] + len(shard_list_per_source[i])
+        next_shard_per_source[i] = starting_shard_per_source[i] + len(
+            shard_list_per_source[i]
+        )
 
     num_samples_per_source = [sum(n) for n in num_samples_per_source]
 
@@ -475,7 +536,9 @@ def _single_epoch_string(
         if len(shard_list_source) == 1:
             shard_string_source = shard_root_source + shard_list_source[0] + ".tar"
         else:
-            shard_string_source = shard_root_source + "{" + ",".join(shard_list_source) + "}.tar"
+            shard_string_source = (
+                shard_root_source + "{" + ",".join(shard_list_source) + "}.tar"
+            )
         if source_path.startswith("s3"):
             shard_string_source = f"pipe:aws s3 cp {shard_string_source} -"
         shard_strings_per_source.append(shard_string_source)

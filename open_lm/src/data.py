@@ -100,7 +100,11 @@ class SyntheticDataset(Dataset):
 
     def __getitem__(self, idx):
         generator = torch.Generator().manual_seed(idx)
-        return ((torch.rand(self.seq_len + 1, generator=generator) * self.vocab_size).long(),)
+        return (
+            (
+                torch.rand(self.seq_len + 1, generator=generator) * self.vocab_size
+            ).long(),
+        )
 
 
 def expand_urls(urls, weights=None):
@@ -110,8 +114,8 @@ def expand_urls(urls, weights=None):
     if isinstance(urls, str):
         urllist = urls.split("::")
         weights = weights.split("::")
-        assert len(weights) == len(
-            urllist
+        assert (
+            len(weights) == len(urllist)
         ), f"Expected the number of data components ({len(urllist)}) and weights({len(weights)}) to match."
         weights = [float(weight) for weight in weights]
         all_urls, all_weights = [], []
@@ -154,7 +158,9 @@ def log_and_continue(exn):
     return True
 
 
-def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, handler=None):
+def group_by_keys_nothrow(
+    data, keys=base_plus_ext, lcase=True, suffixes=None, handler=None
+):
     """Return function over iterator that groups key, value pairs into samples.
 
     :param keys: function that splits the key into key and extension (base_plus_ext)
@@ -172,7 +178,11 @@ def group_by_keys_nothrow(data, keys=base_plus_ext, lcase=True, suffixes=None, h
         # FIXME webdataset version throws if suffix in current_sample, but we have a potential for
         #  this happening in the current LAION400m dataset if a tar ends with same prefix as the next
         #  begins, rare, but can happen since prefix aren't unique across tar files in that dataset
-        if current_sample is None or prefix != current_sample["__key__"] or suffix in current_sample:
+        if (
+            current_sample is None
+            or prefix != current_sample["__key__"]
+            or suffix in current_sample
+        ):
             if valid_sample(current_sample):
                 yield current_sample
             current_sample = dict(__key__=prefix, __url__=filesample["__url__"])
@@ -263,8 +273,8 @@ class ResampledShards2(IterableDataset):
         self.urls = urls
         self.weights = weights
         if self.weights is not None:
-            assert len(self.urls) == len(
-                self.weights
+            assert (
+                len(self.urls) == len(self.weights)
             ), f"Number of urls {len(self.urls)} and weights {len(self.weights)} should match."
         assert isinstance(self.urls[0], str)
         self.nshards = nshards
@@ -294,7 +304,9 @@ class ResampledShards2(IterableDataset):
             if self.weights is None:
                 yield dict(url=self.rng.choice(self.urls))
             else:
-                yield dict(url=self.rng.choices(self.urls, weights=self.weights, k=1)[0])
+                yield dict(
+                    url=self.rng.choices(self.urls, weights=self.weights, k=1)[0]
+                )
 
 
 def filter_lt_seqlen(seq_len, x):
@@ -324,7 +336,15 @@ class FiniteDataPipeline(wds.DataPipeline):
             return self.iterator()
 
 
-def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_key="json", force_num_samples=None):
+def get_wds_dataset(
+    args,
+    is_train,
+    epoch=0,
+    floor=True,
+    tokenizer=None,
+    data_key="json",
+    force_num_samples=None,
+):
     """Create a dataloader for a dataset in webdataset format.
 
     Args:
@@ -343,7 +363,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
     datasets = []
     all_num_samples = []
 
-    shared_epoch = SharedEpoch(epoch=epoch)  # create a shared epoch store to sync epoch to dataloader worker proc
+    shared_epoch = SharedEpoch(
+        epoch=epoch
+    )  # create a shared epoch store to sync epoch to dataloader worker proc
     for ii, input_shards in enumerate(input_shards_):
         resampled = getattr(args, "dataset_resampled", False) and is_train
         num_shards = None
@@ -353,7 +375,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
                     num_samples = force_num_samples[ii]
                 else:
                     if args.train_data_mix_weights is not None:
-                        num_samples = int(args.train_num_samples * args.train_data_mix_weights[ii])
+                        num_samples = int(
+                            args.train_num_samples * args.train_data_mix_weights[ii]
+                        )
                     else:
                         num_samples = args.train_num_samples // len(input_shards_)
             else:
@@ -406,7 +430,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
                     wds.shuffle(
                         bufsize=_SAMPLE_SHUFFLE_SIZE if do_shuffle else 0,
                         initial=_SAMPLE_SHUFFLE_INITIAL if do_shuffle else 0,
-                        rng=random.Random(args.seed + shared_epoch.get_value()) if args.seed is not None else None,
+                        rng=random.Random(args.seed + shared_epoch.get_value())
+                        if args.seed is not None
+                        else None,
                     ),
                 ]
             )
@@ -421,14 +447,19 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
             )
 
         map_handler = {"handler": log_and_continue} if args.ignore_parse_errors else {}
-        batch_size = args.per_gpu_batch_size if is_train else args.per_gpu_val_batch_size
+        batch_size = (
+            args.per_gpu_batch_size if is_train else args.per_gpu_val_batch_size
+        )
 
         if data_key == "json" or data_key == "json.gz":
             pipeline.extend(
                 [
                     wds.decode(**map_handler),
                     wds.rename(json=data_key),
-                    wds.map_dict(json=partial(preprocess_json, vocab_size=args.vocab_size), **map_handler),
+                    wds.map_dict(
+                        json=partial(preprocess_json, vocab_size=args.vocab_size),
+                        **map_handler,
+                    ),
                     wds.to_tuple("json", **map_handler),
                     wds.select(partial(filter_lt_seqlen, args.seq_len)),
                     wds.batched(batch_size, partial=not is_train),
@@ -437,7 +468,10 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
         elif data_key == "txt":
             pipeline.extend(
                 [
-                    wds.map_dict(txt=partial(preprocess_txt, vocab_size=args.vocab_size), **map_handler),
+                    wds.map_dict(
+                        txt=partial(preprocess_txt, vocab_size=args.vocab_size),
+                        **map_handler,
+                    ),
                     wds.to_tuple("txt", **map_handler),
                     wds.select(partial(filter_lt_seqlen, args.seq_len)),
                     wds.batched(batch_size, partial=not is_train),
@@ -454,7 +488,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
         # TODO: why did we previoulsy wrap with RandomMix_
         dataset = RandomMix(datasets, probs=args.train_data_mix_weights, longest=True)
         if len(datasets) > 1:
-            logging.warning("Source mixing is happening during training. It is preferred to mix during tokenization.")
+            logging.warning(
+                "Source mixing is happening during training. It is preferred to mix during tokenization."
+            )
     else:
         pass
 
@@ -463,9 +499,15 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
         if not resampled:
             num_shards = num_shards or len(expand_urls(input_shards)[0])
             if num_shards < args.workers * args.world_size:
-                print("Please increase --train-num-samples or decrease workers or world size")
-                print(f"num_shards: {num_shards}, workers: {args.workers}, world_size: {args.world_size}")
-            assert num_shards >= args.workers * args.world_size, "number of shards must be >= total workers"
+                print(
+                    "Please increase --train-num-samples or decrease workers or world size"
+                )
+                print(
+                    f"num_shards: {num_shards}, workers: {args.workers}, world_size: {args.world_size}"
+                )
+            assert (
+                num_shards >= args.workers * args.world_size
+            ), "number of shards must be >= total workers"
         # roll over and repeat a few samples to get same number of full batches on each node
         round_fn = math.floor if floor else math.ceil
         global_batch_size = batch_size * args.world_size
@@ -474,7 +516,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
         for ii in range(len(datasets)):
             # Calculate batches per worker, round as little as possible.
             num_workers_per_gpu = max(1, args.workers)
-            num_worker_batches = round_fn(all_num_samples[ii] / (global_batch_size * num_workers_per_gpu))
+            num_worker_batches = round_fn(
+                all_num_samples[ii] / (global_batch_size * num_workers_per_gpu)
+            )
 
             if num_worker_batches == 0:
                 raise ValueError(
@@ -500,7 +544,9 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
     # Start a generator to have control over reproducibility.
     if args.seed is not None:
         generator = torch.Generator()
-        generator.manual_seed(args.seed + shared_epoch.get_value() * args.world_size + args.rank)
+        generator.manual_seed(
+            args.seed + shared_epoch.get_value() * args.world_size + args.rank
+        )
         worker_init_fn = seed_worker
     else:
         generator = None
@@ -525,7 +571,11 @@ def get_wds_dataset(args, is_train, epoch=0, floor=True, tokenizer=None, data_ke
 
 def get_synthetic_dataset(args, is_train, epoch, tokenizer, data_key, floor):
     print(f"{args.train_num_samples=}")
-    dataset = SyntheticDataset(seq_len=args.seq_len, vocab_size=args.vocab_size, dataset_size=args.train_num_samples)
+    dataset = SyntheticDataset(
+        seq_len=args.seq_len,
+        vocab_size=args.vocab_size,
+        dataset_size=args.train_num_samples,
+    )
     print(f"{len(dataset)=}")
     sampler = DistributedSampler(dataset) if args.distributed and is_train else None
     shuffle = is_train and sampler is None
@@ -561,7 +611,12 @@ def get_data(args, epoch=0, tokenizer=None, skip_train=False, floor=True):
         if args.train_data or args.dataset_type == "synthetic":
             # train data is treated as a shard list where all data is combined and tained on
             data["train"] = get_dataset_fn(args.dataset_type)(
-                args, is_train=True, epoch=epoch, tokenizer=tokenizer, data_key=args.data_key, floor=floor
+                args,
+                is_train=True,
+                epoch=epoch,
+                tokenizer=tokenizer,
+                data_key=args.data_key,
+                floor=floor,
             )
 
     if args.val_data:
@@ -572,7 +627,10 @@ def get_data(args, epoch=0, tokenizer=None, skip_train=False, floor=True):
             args_copy.val_data = [val_data]
             data_val = {
                 "val": get_dataset_fn(args.dataset_type)(
-                    args_copy, is_train=False, tokenizer=tokenizer, data_key=args.val_data_key[i]
+                    args_copy,
+                    is_train=False,
+                    tokenizer=tokenizer,
+                    data_key=args.val_data_key[i],
                 )
             }
             data["val_list"].append(data_val)
@@ -670,7 +728,9 @@ def mask_sequence(chunk, start_idx, args, ignore_tok=-100):
         targets_mask_left_positions = targets == args.target_mask_left
 
         # construct cumulative mask for positions before (last) tok (if it appears)
-        cumsum_mask = targets_mask_left_positions.flip(dims=[-1]).cumsum(dim=-1).flip(dims=[-1])
+        cumsum_mask = (
+            targets_mask_left_positions.flip(dims=[-1]).cumsum(dim=-1).flip(dims=[-1])
+        )
 
         if torch.any(cumsum_mask > 1):
             logging.warning(
@@ -709,7 +769,9 @@ def sample_chunk(chunk, args):
     elif chunk.shape[1] > args.seq_len + 1:
         start_idx = torch.randint(0, chunk.shape[1] - args.seq_len, (1,)).item()
     else:
-        raise Exception(f"Invalid sequence length: Sequence length {args.seq_len} > {chunk.shape[1]} Chunk size")
+        raise Exception(
+            f"Invalid sequence length: Sequence length {args.seq_len} > {chunk.shape[1]} Chunk size"
+        )
 
     inputs = chunk[:, start_idx : start_idx + args.seq_len]
     targets = chunk[:, start_idx + 1 : start_idx + args.seq_len + 1]

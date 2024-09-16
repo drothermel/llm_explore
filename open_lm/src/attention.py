@@ -30,7 +30,9 @@ def get_rectangular_causal_mask(shape, q_seq_len, k_seq_len, device, dtype):
     mask = torch.ones((q_seq_len, k_seq_len), device=device, dtype=bool)
     mask[:, -q_seq_len:] = torch.tril(mask[:, -q_seq_len:], diagonal=0)
 
-    output_mask = torch.zeros((*shape, q_seq_len, next_multiple_8), device=device, dtype=dtype)
+    output_mask = torch.zeros(
+        (*shape, q_seq_len, next_multiple_8), device=device, dtype=dtype
+    )
     output_mask[:, :, :, :k_seq_len].masked_fill_(~mask, torch.finfo(dtype).min)
     return output_mask[:, :, :, :k_seq_len]
 
@@ -52,9 +54,13 @@ def apply_attention_mask_(bias, attention_mask, queries_dtype):
     mask_length = attention_mask.shape[-1]
     # Set parts of bias that are zero (i.e., where attention is allowed) _and_ attention_mask is False (i.e.,
     # where we should not attend) with min_dtype.
-    padding_mask = bias[..., :mask_length].eq(0.0) * attention_mask[:, None, None, :].eq(0.0)
+    padding_mask = bias[..., :mask_length].eq(0.0) * attention_mask[
+        :, None, None, :
+    ].eq(0.0)
     min_dtype = torch.finfo(queries_dtype).min
-    bias[..., :mask_length] = bias[..., :mask_length].masked_fill(padding_mask, min_dtype)
+    bias[..., :mask_length] = bias[..., :mask_length].masked_fill(
+        padding_mask, min_dtype
+    )
     # Disable masking for sequence indices where all attention weights are -inf
     # We won't use these anyway, and keeping them as -inf leads to nans.
     # See https://github.com/huggingface/transformers/blob/f738ab3b5d30e30c43a4c3d00ca8939f8a4d4427/src/transformers/modeling_attn_mask_utils.py#L189
@@ -71,12 +77,17 @@ def torch_attn(queries, keys, values, is_causal, attention_mask=None):
         k_seq_len = keys.shape[1]
         # Same as above, we would like to use:
         # mask = xops.fmha.attn_bias.LowerTriangularFromBottomRightMask().materialize((1, 1, q_seq_len, k_seq_len), queries.dtype, queries.device)
-        mask = get_rectangular_causal_mask((1, 1), q_seq_len, k_seq_len, queries.device, queries.dtype)
+        mask = get_rectangular_causal_mask(
+            (1, 1), q_seq_len, k_seq_len, queries.device, queries.dtype
+        )
         if attention_mask is not None:
             apply_attention_mask_(mask, attention_mask, queries_dtype=queries.dtype)
         return (
             F.scaled_dot_product_attention(
-                queries.transpose(1, 2), keys.transpose(1, 2), values.transpose(1, 2), attn_mask=mask
+                queries.transpose(1, 2),
+                keys.transpose(1, 2),
+                values.transpose(1, 2),
+                attn_mask=mask,
             )
             .transpose(1, 2)
             .contiguous()
@@ -89,11 +100,15 @@ def torch_attn(queries, keys, values, is_causal, attention_mask=None):
                 is_causal = False
         else:
             if not is_causal:
-                raise NotImplementedError("attention_mask with is_causal=False is not yet implemented.")
+                raise NotImplementedError(
+                    "attention_mask with is_causal=False is not yet implemented."
+                )
             # Build causal mask that assumes queries are in the end of the sequence.
             batch, q_seq_len, heads, _ = queries.shape
             k_seq_len = keys.shape[1]
-            bias = get_rectangular_causal_mask((batch, heads), q_seq_len, k_seq_len, queries.device, queries.dtype)
+            bias = get_rectangular_causal_mask(
+                (batch, heads), q_seq_len, k_seq_len, queries.device, queries.dtype
+            )
             if attention_mask is not None:
                 apply_attention_mask_(bias, attention_mask, queries_dtype=queries.dtype)
             # We apply causal mask in attention instead of using is_causal=True.
@@ -148,9 +163,13 @@ def custom_attn(
     batch, q_seq_len, heads, embed_dim = queries.shape
     _, k_seq_len, _, _ = keys.shape
 
-    attn_bias = torch.zeros(batch, heads, q_seq_len, k_seq_len, device=queries.device, dtype=queries.dtype)
+    attn_bias = torch.zeros(
+        batch, heads, q_seq_len, k_seq_len, device=queries.device, dtype=queries.dtype
+    )
     if is_causal and queries.shape[1] > 1:
-        attn_bias = get_rectangular_causal_mask((batch, heads), q_seq_len, k_seq_len, queries.device, queries.dtype)
+        attn_bias = get_rectangular_causal_mask(
+            (batch, heads), q_seq_len, k_seq_len, queries.device, queries.dtype
+        )
 
     inner_scale = embed_dim**-0.5
     attn_weight = torch.einsum("bqhd,bkhd->bhqk", inner_scale * queries, keys)
@@ -169,11 +188,13 @@ def get_attn_func(
     attn_seq_scalar=None,
     alpha=None,
 ):
-    if attn_name in ['auto', 'torch_attn']:
+    if attn_name in ["auto", "torch_attn"]:
         return torch_attn
     elif attn_name == "custom_attn":
         assert (
-            attn_activation is not None and attn_seq_scalar is not None and alpha is not None
+            attn_activation is not None
+            and attn_seq_scalar is not None
+            and alpha is not None
         ), "must provide attn-activation, attn-seq-scalar, attn-seq-scalar-alpha"
         return partial(
             custom_attn,

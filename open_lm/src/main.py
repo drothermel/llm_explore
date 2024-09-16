@@ -151,7 +151,9 @@ def load_optimizer(args, model, optimizer, scaler):
         if optimizer is not None:
             osd = checkpoint["optimizer"]
             if args.fsdp:
-                osd = FSDP.optim_state_dict_to_load(model=model, optim=optimizer, optim_state_dict=osd)
+                osd = FSDP.optim_state_dict_to_load(
+                    model=model, optim=optimizer, optim_state_dict=osd
+                )
             optimizer.load_state_dict(osd)
             logging.info(f"=> resuming optimizer")
         if scaler is not None and "scaler" in checkpoint:
@@ -254,10 +256,14 @@ def save_checkpoint(
         if (
             completed_epoch == args.epochs
             or is_final_checkpoint
-            or (args.save_frequency > 0 and (completed_epoch % args.save_frequency) == 0)
+            or (
+                args.save_frequency > 0 and (completed_epoch % args.save_frequency) == 0
+            )
         ):
             for prefix in prefixes:
-                save_path = args.checkpoint_path if not failed else args.failed_checkpoint_path
+                save_path = (
+                    args.checkpoint_path if not failed else args.failed_checkpoint_path
+                )
                 path = os.path.join(save_path, f"{prefix}{completed_epoch}.pt")
                 print(f"Saving {prefix}{completed_epoch} in {path}...")
                 torch.save(
@@ -267,7 +273,9 @@ def save_checkpoint(
 
         if args.delete_previous_checkpoint:
             for prefix in prefixes:
-                prev = os.path.join(args.checkpoint_path, f"{prefix}{completed_epoch - 1}.pt")
+                prev = os.path.join(
+                    args.checkpoint_path, f"{prefix}{completed_epoch - 1}.pt"
+                )
                 if os.path.exists(prev):
                     os.remove(prev)
 
@@ -282,7 +290,11 @@ def cleanup(sync_process, distributed=False):
 def main(args):
     args = parse_args(args)
 
-    requires_training = args.train_data or args.dataset_type == "synthetic" or args.dataset_manifest is not None
+    requires_training = (
+        args.train_data
+        or args.dataset_type == "synthetic"
+        or args.dataset_manifest is not None
+    )
 
     if torch.cuda.is_available():
         # This enables tf32 on Ampere GPUs which is only 8% slower than
@@ -301,13 +313,19 @@ def main(args):
 
     args.per_gpu_batch_size = max(args.global_batch_size // args.world_size, 1)
     if args.val_data is not None:
-        args.per_gpu_val_batch_size = max(args.global_val_batch_size // args.world_size, 1)
+        args.per_gpu_val_batch_size = max(
+            args.global_val_batch_size // args.world_size, 1
+        )
 
     if args.hf_model is not None and args.hf_seq_len is None:
-        raise ValueError("If passing --hf-model, must also pass --hf-seq-len to be used for training/fine-tuning.")
+        raise ValueError(
+            "If passing --hf-model, must also pass --hf-seq-len to be used for training/fine-tuning."
+        )
 
     if args.hf_model is not None and args.fsdp and args.hf_fsdp_block is None:
-        raise ValueError("If passing --hf-model and --fsdp, must also pass --hf-fspd-block.")
+        raise ValueError(
+            "If passing --hf-model and --fsdp, must also pass --hf-fspd-block."
+        )
 
     if args.fsdp and not args.distributed:
         raise ValueError(f"--fsdp can only be specified in distributed mode.")
@@ -345,7 +363,9 @@ def main(args):
         log_filename = f"out-{args.rank}" if args.log_local else "out.log"
         args.log_path = os.path.join(log_base_path, log_filename)
         if os.path.exists(args.log_path) and not resume_latest:
-            raise ValueError(f"Experiment {args.log_path} already exists. Use --name to specify a new experiment.")
+            raise ValueError(
+                f"Experiment {args.log_path} already exists. Use --name to specify a new experiment."
+            )
 
     # Setup text logger
     args.log_level = logging.DEBUG if args.debug else logging.INFO
@@ -357,8 +377,14 @@ def main(args):
     args.checkpoint_path = os.path.join(log_base_path, "checkpoints")
     args.failed_checkpoint_path = os.path.join(log_base_path, "checkpoints_failed")
     if is_master(args):
-        args.tensorboard_path = os.path.join(log_base_path, "tensorboard") if args.tensorboard else ""
-        for dirname in [args.tensorboard_path, args.checkpoint_path, args.failed_checkpoint_path]:
+        args.tensorboard_path = (
+            os.path.join(log_base_path, "tensorboard") if args.tensorboard else ""
+        )
+        for dirname in [
+            args.tensorboard_path,
+            args.checkpoint_path,
+            args.failed_checkpoint_path,
+        ]:
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
     else:
@@ -378,7 +404,9 @@ def main(args):
             # stress, however it's very difficult to fully work around such situations.
             if args.save_most_recent:
                 # if --save-most-recent flag is set, look for latest at a fixed filename
-                resume_from = os.path.join(checkpoint_path, "checkpoints", LATEST_CHECKPOINT_NAME)
+                resume_from = os.path.join(
+                    checkpoint_path, "checkpoints", LATEST_CHECKPOINT_NAME
+                )
                 if not os.path.exists(resume_from):
                     # If no latest checkpoint has been saved yet, don't try to resume
                     resume_from = None
@@ -424,7 +452,9 @@ def main(args):
     # TODO: For cases where main() is called as a functio, we need to call cleanup() manually.
     # Right now, we do this manually in every case where main returns, but we should put main() in a wrapper and call
     # cleanup() outside it, ideally.
-    atexit.register(cleanup, sync_process=remote_sync_process, distributed=args.distributed)
+    atexit.register(
+        cleanup, sync_process=remote_sync_process, distributed=args.distributed
+    )
 
     if args.precision == "fp16":
         logging.warning(
@@ -477,7 +507,9 @@ def main(args):
                         break
 
                 if transformer_layer_cls is None:
-                    print(f"--hf-fsdp-block {args.hf_fsdp_block} not found in --hf-model {args.hf_model}")
+                    print(
+                        f"--hf-fsdp-block {args.hf_fsdp_block} not found in --hf-model {args.hf_model}"
+                    )
                     return -1
 
             else:
@@ -505,7 +537,9 @@ def main(args):
                 )
 
             if args.rank == 0:
-                print(f"Before FSDP parameter num: {sum(p.numel() for p in model.parameters()):,}")
+                print(
+                    f"Before FSDP parameter num: {sum(p.numel() for p in model.parameters()):,}"
+                )
                 print(f"Before FSDP {torch.cuda.memory_allocated()/1024**3:.3} GB")
 
             fsdp_kwargs = {}
@@ -533,17 +567,25 @@ def main(args):
                 **fsdp_kwargs,
             )
 
-            print(f"After FSDP parameter num: {sum(p.numel() for p in model.parameters()):,} on rank {args.rank}")
-            print(f"After FSDP {torch.cuda.memory_allocated()/1024**3:.3} GB on rank {args.rank}")
+            print(
+                f"After FSDP parameter num: {sum(p.numel() for p in model.parameters()):,} on rank {args.rank}"
+            )
+            print(
+                f"After FSDP {torch.cuda.memory_allocated()/1024**3:.3} GB on rank {args.rank}"
+            )
         else:
             ddp_args = {}
             if args.ddp_static_graph:
                 # this doesn't exist in older PyTorch, arg only added if enabled
                 ddp_args["static_graph"] = True
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device], **ddp_args)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[device], **ddp_args
+            )
 
     if is_master(args):
-        logging.info(f"Model (has {sum(p.numel() for p in model.parameters() if p.requires_grad)} parameters):")
+        logging.info(
+            f"Model (has {sum(p.numel() for p in model.parameters() if p.requires_grad)} parameters):"
+        )
         logging.info(f"{str(model)}")
         logging.info("Params:")
         params_file = os.path.join(args.logs, args.name, "params.txt")
@@ -576,31 +618,48 @@ def main(args):
             " with coefficients: ",
             args.average_coefficients,
         )
-        assert num_models_to_average > 1, "num_models_to_average must be > 1 - else use --pretrained"
+        assert (
+            num_models_to_average > 1
+        ), "num_models_to_average must be > 1 - else use --pretrained"
         if args.average_coefficients is None:
-            args.average_coefficients = [1.0 / num_models_to_average] * num_models_to_average
+            args.average_coefficients = [
+                1.0 / num_models_to_average
+            ] * num_models_to_average
         else:
             assert len(args.average_coefficients) == num_models_to_average
-        state_dict = {k: v * args.average_coefficients[0] for k, v in get_state_dict(args.average[0]).items()}
+        state_dict = {
+            k: v * args.average_coefficients[0]
+            for k, v in get_state_dict(args.average[0]).items()
+        }
         for i in range(1, num_models_to_average):
             state_dict_i = get_state_dict(args.average[i])
             for k in state_dict:
-                state_dict[k] = state_dict[k] + state_dict_i[k] * args.average_coefficients[i]
+                state_dict[k] = (
+                    state_dict[k] + state_dict_i[k] * args.average_coefficients[i]
+                )
         model.load_state_dict(state_dict)
 
     # Put the shard shuffle seed back into args (this is done for compatibility with older, non shuffling versions)
     args.shard_shuffle_seed = shard_shuffle_seed
 
     if requires_training and global_step is None:
-        raise ValueError("Key 'step' not found in checkpoint, but required for training.")
+        raise ValueError(
+            "Key 'step' not found in checkpoint, but required for training."
+        )
 
     # Add data chunk when resuming (only for dataset without resampling)
-    next_shard_per_source = [0 for _ in range(len(args.dataset_manifest))] if args.dataset_manifest is not None else 0
+    next_shard_per_source = (
+        [0 for _ in range(len(args.dataset_manifest))]
+        if args.dataset_manifest is not None
+        else 0
+    )
     samples_seen = 0
     if args.resume is not None and args.dataset_manifest is not None:
         next_shard_per_source, samples_seen = load_data_chunks(args)
         if samples_seen >= args.train_num_samples * args.epochs:
-            raise RuntimeError("Loaded a checkpoint which has already seen the desired number of tokens.")
+            raise RuntimeError(
+                "Loaded a checkpoint which has already seen the desired number of tokens."
+            )
 
     # create optimizer and scaler
     optimizer = None
@@ -642,7 +701,9 @@ def main(args):
 
     if args.target_mask_individual is not None:
         # tokens handled with same modulo in dataloading
-        args.target_mask_individual = proc_token(args.target_mask_individual, args.vocab_size)
+        args.target_mask_individual = proc_token(
+            args.target_mask_individual, args.vocab_size
+        )
 
     if args.torchcompile:
         logging.info("Compiling model...")
@@ -657,7 +718,9 @@ def main(args):
     scheduler = None
     if requires_training:
         if args.dataset_manifest is not None:
-            total_steps = (args.train_num_samples * args.epochs) // args.global_batch_size
+            total_steps = (
+                args.train_num_samples * args.epochs
+            ) // args.global_batch_size
         else:
             total_steps = (data["train"].dataloader.num_batches) * args.epochs
 
@@ -680,7 +743,9 @@ def main(args):
                 # args.force_min_lr,
             )
         else:
-            raise ValueError(f"Unknown scheduler, {args.lr_scheduler}. Available options are: cosine, const.")
+            raise ValueError(
+                f"Unknown scheduler, {args.lr_scheduler}. Available options are: cosine, const."
+            )
 
     # determine if this worker should save logs and checkpoints. only do so if it is rank == 0
     args.save_logs = args.logs and args.logs.lower() != "none" and is_master(args)
@@ -740,7 +805,9 @@ def main(args):
             logging.info(f"Start epoch {epoch}")
 
         if args.dataset_manifest is not None:
-            assert not args.dataset_resampled, "dataset_manifest and dataset_resampled are mutually exclusive"
+            assert (
+                not args.dataset_resampled
+            ), "dataset_manifest and dataset_resampled are mutually exclusive"
             (
                 train_data_string_per_source,
                 num_samples_per_source,
@@ -770,7 +837,12 @@ def main(args):
 
             # Draw num_samples_per_source at most from dataset - rounded down to guarantee uniqueness.
             data["train"] = get_wds_dataset(
-                args, True, epoch, force_num_samples=num_samples_per_source, data_key=args.data_key, floor=True
+                args,
+                True,
+                epoch,
+                force_num_samples=num_samples_per_source,
+                data_key=args.data_key,
+                floor=True,
             )
 
         prev_step = global_step
@@ -807,7 +879,10 @@ def main(args):
 
         failed_ckpt = False
         expected_steps = data["train"].dataloader.num_batches
-        if steps_done_epoch < (1 - args.data_tolerate_error_p) * expected_steps and not done_training:
+        if (
+            steps_done_epoch < (1 - args.data_tolerate_error_p) * expected_steps
+            and not done_training
+        ):
             failed_ckpt = True
             num_ckpt_too_few_tokens += 1
             if is_master(args):
@@ -820,10 +895,14 @@ def main(args):
         if "val_list" in data and (epoch % args.val_frequency == 0 or done_training):
             # validate based on frequency and always validate the last checkpoint
             try:
-                evaluation_metrics = evaluate_loop(model, data["val_list"], epoch, args, writer)
+                evaluation_metrics = evaluate_loop(
+                    model, data["val_list"], epoch, args, writer
+                )
 
                 if is_master(args):
-                    with fsspec.open(os.path.join(args.checkpoint_path, "results.jsonl"), "a") as f:
+                    with fsspec.open(
+                        os.path.join(args.checkpoint_path, "results.jsonl"), "a"
+                    ) as f:
                         f.write(f"{json.dumps(evaluation_metrics)}\n")
 
             except Exception as e:
@@ -843,9 +922,9 @@ def main(args):
             if args.dataset_manifest is not None:
                 for i in range(len(next_shard_per_source)):
                     end_of_epoch_log[f"next_shard_{i}"] = next_shard_per_source[i]
-                    end_of_epoch_log[f"dataset_pass_{i}"] = next_shard_per_source[i] // len(
-                        get_metadata_file(args.dataset_manifest[i])
-                    )
+                    end_of_epoch_log[f"dataset_pass_{i}"] = next_shard_per_source[
+                        i
+                    ] // len(get_metadata_file(args.dataset_manifest[i]))
 
             for name, val in end_of_epoch_log.items():
                 name = "train/" + name
@@ -853,7 +932,13 @@ def main(args):
                     writer.add_scalar(name, val, global_step)
                 if args.wandb:
                     assert wandb is not None, "Please install wandb."
-                    wandb.log({name: val, "step": global_step, "tokens": end_of_epoch_log["tokens"]})
+                    wandb.log(
+                        {
+                            name: val,
+                            "step": global_step,
+                            "tokens": end_of_epoch_log["tokens"],
+                        }
+                    )
 
         # Saving checkpoints.
         save_checkpoint(
@@ -866,10 +951,14 @@ def main(args):
             step=global_step,
             is_final_checkpoint=done_training,
             percentage_of_data_seen=1.0 * steps_done_epoch / expected_steps,
-            next_shard_per_source=next_shard_per_source if args.dataset_manifest is not None else None,
+            next_shard_per_source=next_shard_per_source
+            if args.dataset_manifest is not None
+            else None,
             samples_seen=samples_seen if args.dataset_manifest is not None else None,
             shard_shuffle_seed=args.shard_shuffle_seed,
-            train_data_string=train_data_string_per_source if args.dataset_manifest is not None else None,
+            train_data_string=train_data_string_per_source
+            if args.dataset_manifest is not None
+            else None,
             failed=failed_ckpt,
         )
 
@@ -880,7 +969,9 @@ def main(args):
 
         if done_training:
             if is_master(args):
-                logging.info("Model has seen the desired number of tokens. Ending training.")
+                logging.info(
+                    "Model has seen the desired number of tokens. Ending training."
+                )
             break
 
     if args.wandb and is_master(args):
@@ -914,13 +1005,17 @@ def copy_codebase(args):
 
     new_code_path = os.path.join(args.logs, args.name, "code")
     if os.path.exists(new_code_path):
-        print(f"Error. Experiment already exists at {new_code_path}. Use --name to specify a new experiment.")
+        print(
+            f"Error. Experiment already exists at {new_code_path}. Use --name to specify a new experiment."
+        )
         return -1
     print(f"Copying codebase to {new_code_path}")
     current_code_path = os.path.realpath(__file__)
     for _ in range(3):
         current_code_path = os.path.dirname(current_code_path)
-    copytree(current_code_path, new_code_path, ignore=ignore_patterns("log", "logs", "wandb"))
+    copytree(
+        current_code_path, new_code_path, ignore=ignore_patterns("log", "logs", "wandb")
+    )
     print("Done copying code.")
     return 1
 

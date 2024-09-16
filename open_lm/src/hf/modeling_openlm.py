@@ -126,7 +126,10 @@ class OpenLMForCausalLM(PreTrainedModel):
         return True
 
     def prepare_inputs_for_generation(
-        self, input_ids: torch.LongTensor, past_key_values: Optional[List[Tuple]] = None, **kwargs
+        self,
+        input_ids: torch.LongTensor,
+        past_key_values: Optional[List[Tuple]] = None,
+        **kwargs,
     ):
         if past_key_values is not None:
             if isinstance(past_key_values[0][1], int):
@@ -185,7 +188,9 @@ class OpenLMForCausalLM(PreTrainedModel):
         pass
 
     def resize_token_embeddings(
-        self, new_num_tokens: Optional[int] = None, pad_to_multiple_of: Optional[int] = None
+        self,
+        new_num_tokens: Optional[int] = None,
+        pad_to_multiple_of: Optional[int] = None,
     ) -> torch.nn.Embedding:
         raise NotImplementedError
 

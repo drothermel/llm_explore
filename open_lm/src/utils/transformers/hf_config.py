@@ -15,7 +15,7 @@ class OpenLMConfig(PretrainedConfig):
         params: Optional[Params] = None,
         params_args: Optional[Namespace] = None,
         params_args_dict: Optional[Dict] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the HFConfig class. Any of the three arguments can be used to initialize the class.

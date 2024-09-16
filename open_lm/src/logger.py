@@ -11,7 +11,9 @@ def setup_logging(log_file, level, include_host=False):
             datefmt="%Y-%m-%d,%H:%M:%S",
         )
     else:
-        formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d,%H:%M:%S")
+        formatter = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d,%H:%M:%S"
+        )
 
     logging.root.setLevel(level)
 

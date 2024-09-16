@@ -54,7 +54,10 @@ def _rescan_model_configs(model_config_paths=None):
             model_cfg = json.load(f)
             _MODEL_CONFIGS[cf.stem] = model_cfg
 
-    _MODEL_CONFIGS = {k: v for k, v in sorted(_MODEL_CONFIGS.items(), key=lambda x: _natural_key(x[0]))}
+    _MODEL_CONFIGS = {
+        k: v
+        for k, v in sorted(_MODEL_CONFIGS.items(), key=lambda x: _natural_key(x[0]))
+    }
 
 
 _rescan_model_configs()  # initial populate of model config registry
@@ -89,7 +92,9 @@ def get_pos_embed(args: Params):
     elif args.positional_embedding_type == "none":
         return identity_with_cast
     else:
-        raise RuntimeError(f"Unknown positional embedding type {args.positional_embedding_type}")
+        raise RuntimeError(
+            f"Unknown positional embedding type {args.positional_embedding_type}"
+        )
 
 
 class CustomAttn(nn.Module):
@@ -131,9 +136,18 @@ class CustomAttn(nn.Module):
         torch.nn.init.trunc_normal_(self.in_proj.weight, std=std, a=-3 * std, b=3 * std)
         # scale init by depth as in https://arxiv.org/abs/1908.11365 -- worked slightly better.
         std = std / math.sqrt(2 * (self.layer_id + 1))
-        torch.nn.init.trunc_normal_(self.out_proj.weight, std=std, a=-3 * std, b=3 * std)
+        torch.nn.init.trunc_normal_(
+            self.out_proj.weight, std=std, a=-3 * std, b=3 * std
+        )
 
-    def forward(self, x: torch.Tensor, is_causal=True, past_key_value=None, use_cache=False, attention_mask=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        is_causal=True,
+        past_key_value=None,
+        use_cache=False,
+        attention_mask=None,
+    ):
         batchsize, q_len, _ = x.shape
         queries, keys, vals = self.in_proj(x).chunk(3, dim=-1)
 
@@ -192,12 +206,16 @@ class GemmaMLP(nn.Module):
 
     def reset_parameters(self):
         std = 1.0 / math.sqrt(self.dim)
-        torch.nn.init.trunc_normal_(self.gate_proj.weight, std=std, a=-3 * std, b=3 * std)
+        torch.nn.init.trunc_normal_(
+            self.gate_proj.weight, std=std, a=-3 * std, b=3 * std
+        )
         torch.nn.init.trunc_normal_(self.up_proj.weight, std=std, a=-3 * std, b=3 * std)
 
         std = 1.0 / math.sqrt(self.hidden_dim)
         std = std / math.sqrt(2 * (self._layer_id + 1))
-        torch.nn.init.trunc_normal_(self.down_proj.weight, std=std, a=-3 * std, b=3 * std)
+        torch.nn.init.trunc_normal_(
+            self.down_proj.weight, std=std, a=-3 * std, b=3 * std
+        )
 
 
 # Same as pseudocode provided from xformers SwiGLU
@@ -226,13 +244,17 @@ class Block(nn.Module):
         if args.ffn_type == "swiglu_torch":
             # this follows llama / lit llama -- go to multiple of 256
             self.hidden_dim = 256 * ((int(2 * 4 * args.dim / 3) + 256 - 1) // 256)
-            self.feed_forward = SwiGLUTorch(args.dim, self.hidden_dim, args.dim, bias=False)
+            self.feed_forward = SwiGLUTorch(
+                args.dim, self.hidden_dim, args.dim, bias=False
+            )
         elif args.ffn_type == "gelu":
             # Follows mosaic mpt7b, but without a bias.
             self.hidden_dim = args.dim * 4
             self._ff_w1 = nn.Linear(args.dim, self.hidden_dim, bias=False)
             self._ff_w2 = nn.Linear(self.hidden_dim, args.dim, bias=False)
-            self.feed_forward = nn.Sequential(self._ff_w1, nn.GELU(approximate="none"), self._ff_w2)
+            self.feed_forward = nn.Sequential(
+                self._ff_w1, nn.GELU(approximate="none"), self._ff_w2
+            )
         elif args.ffn_type == "gemma_geglu":
             # this follows llama / lit llama -- go to multiple of 256
             self.hidden_dim = 256 * ((int(2 * 4 * args.dim / 3) + 256 - 1) // 256)
@@ -254,18 +276,26 @@ class Block(nn.Module):
         if self._ffn_type == "swiglu" or self._ffn_type == "swiglu_torch":
             # initialize weights trunc_normal(1/sqrt(fan_in))
             std = 1.0 / math.sqrt(self.dim)
-            torch.nn.init.trunc_normal_(self.feed_forward.w12.weight, std=std, a=-3 * std, b=3 * std)
+            torch.nn.init.trunc_normal_(
+                self.feed_forward.w12.weight, std=std, a=-3 * std, b=3 * std
+            )
             # scale init by depth as in https://arxiv.org/abs/1908.11365 -- worked slightly better.
             std = 1.0 / math.sqrt(self.hidden_dim)
             std = std / math.sqrt(2 * (self.layer_id + 1))
-            torch.nn.init.trunc_normal_(self.feed_forward.w3.weight, std=std, a=-3 * std, b=3 * std)
+            torch.nn.init.trunc_normal_(
+                self.feed_forward.w3.weight, std=std, a=-3 * std, b=3 * std
+            )
         elif self._ffn_type == "gelu":
             std = 1.0 / math.sqrt(self.dim)
-            torch.nn.init.trunc_normal_(self._ff_w1.weight, std=std, a=-3 * std, b=3 * std)
+            torch.nn.init.trunc_normal_(
+                self._ff_w1.weight, std=std, a=-3 * std, b=3 * std
+            )
 
             std = 1.0 / math.sqrt(self.hidden_dim)
             std = std / math.sqrt(2 * (self.layer_id + 1))
-            torch.nn.init.trunc_normal_(self._ff_w2.weight, std=std, a=-3 * std, b=3 * std)
+            torch.nn.init.trunc_normal_(
+                self._ff_w2.weight, std=std, a=-3 * std, b=3 * std
+            )
 
     def forward(self, x, past_key_value=None, use_cache=False, attention_mask=None):
         h, past_key_value = self.attention(
@@ -323,13 +353,22 @@ class Transformer(nn.Module, PyTorchModelHubMixin):
         # for the embed layer (from RWKV paper) but this was better.
         std = 1.0 / math.sqrt(self.params.dim)
         torch.nn.init.trunc_normal_(self.output.weight, std=std, a=-3 * std, b=3 * std)
-        torch.nn.init.trunc_normal_(self.tok_embeddings.weight, std=std, a=-3 * std, b=3 * std)
+        torch.nn.init.trunc_normal_(
+            self.tok_embeddings.weight, std=std, a=-3 * std, b=3 * std
+        )
 
     @torch.jit.ignore
     def set_grad_checkpointing(self, enable=True):
         self.grad_checkpointing = enable
 
-    def forward(self, input_ids=None, inputs_embeds=None, past_key_values=None, use_cache=False, attention_mask=None):
+    def forward(
+        self,
+        input_ids=None,
+        inputs_embeds=None,
+        past_key_values=None,
+        use_cache=False,
+        attention_mask=None,
+    ):
         """
         Args:
             input
@@ -354,9 +393,16 @@ class Transformer(nn.Module, PyTorchModelHubMixin):
             past_key_values = list(past_key_values)
         for i, layer in enumerate(self.layers):
             if self.grad_checkpointing:
-                x, past_key_values[i] = checkpoint(layer, x, past_key_values[i], use_cache, attention_mask)
+                x, past_key_values[i] = checkpoint(
+                    layer, x, past_key_values[i], use_cache, attention_mask
+                )
             else:
-                x, past_key_values[i] = layer(x, past_key_values[i], use_cache=use_cache, attention_mask=attention_mask)
+                x, past_key_values[i] = layer(
+                    x,
+                    past_key_values[i],
+                    use_cache=use_cache,
+                    attention_mask=attention_mask,
+                )
         if past_key_values[0] is None:
             past_key_values = None
         x = self.norm(x)
@@ -399,10 +445,15 @@ def create_params(args):
         weight_tying=cfg["weight_tying"],
         norm_type=get_norm_class(cfg.get("model_norm", args.model_norm)),
         attn_func=get_attn_func(
-            args.attn_name, args.attn_activation, args.attn_seq_scalar, args.attn_seq_scalar_alpha
+            args.attn_name,
+            args.attn_activation,
+            args.attn_seq_scalar,
+            args.attn_seq_scalar_alpha,
         ),
         apply_qk_norm=cfg.get("qk_norm", args.qk_norm),
-        positional_embedding_type=cfg.get("positional_embedding_type", args.positional_embedding_type),
+        positional_embedding_type=cfg.get(
+            "positional_embedding_type", args.positional_embedding_type
+        ),
         ffn_type=cfg.get("ffn_type", args.ffn_type),
     )
 

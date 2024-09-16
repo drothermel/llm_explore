@@ -114,11 +114,18 @@ class OpenLMforCausalLM(OpenLMModel):
             shift_labels = shift_labels.view(-1).to(shift_logits.device)
             loss = loss_fct(shift_logits, shift_labels)
 
-        output = CausalLMOutputWithPast(logits=logits, past_key_values=past_key_values, loss=loss)
+        output = CausalLMOutputWithPast(
+            logits=logits, past_key_values=past_key_values, loss=loss
+        )
         return output
 
     def prepare_inputs_for_generation(
-        self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
+        self,
+        input_ids,
+        past_key_values=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        **kwargs,
     ):
         if past_key_values is not None:
             past_length = past_key_values[0][0].shape[1]
@@ -151,11 +158,17 @@ class OpenLMforCausalLM(OpenLMModel):
     def _reorder_cache(past_key_values, beam_idx):
         reordered_cache = ()
         for layer_past in past_key_values:
-            reordered_cache += (tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),)
+            reordered_cache += (
+                tuple(
+                    past_state.index_select(0, beam_idx) for past_state in layer_past
+                ),
+            )
         return reordered_cache
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path: Optional[Union[str, os.PathLike]], **kwargs):
+    def from_pretrained(
+        cls, pretrained_model_name_or_path: Optional[Union[str, os.PathLike]], **kwargs
+    ):
         if (
             os.path.isdir(pretrained_model_name_or_path)
             and kwargs.get("config", None) is not None

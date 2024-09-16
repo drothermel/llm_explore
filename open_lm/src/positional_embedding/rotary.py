@@ -57,10 +57,17 @@ class RotaryEmbedding(torch.nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.inv_freq = 1.0 / (10000 ** (torch.arange(0, self.dim_model, 2).float() / self.dim_model))
+        self.inv_freq = 1.0 / (
+            10000 ** (torch.arange(0, self.dim_model, 2).float() / self.dim_model)
+        )
         self._update_cos_sin_tables(self.seq_len)
 
-    def _update_cos_sin_tables(self, seq_len: int = None, device: torch.device = None, dtype: torch.dtype = None):
+    def _update_cos_sin_tables(
+        self,
+        seq_len: int = None,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+    ):
         # If no seq_len is provided, use the cached one
         # If the seq_len is smaller than the cached one it is included in the cached one so no need to update
         if seq_len is None or seq_len < self._seq_len_cached:
@@ -68,7 +75,11 @@ class RotaryEmbedding(torch.nn.Module):
 
         # Reset the tables if the sequence length has increased,
         # or if we're on a new device (possibly due to tracing for instance)
-        if seq_len > self._seq_len_cached or self._cos_cached.device != device or self._cos_cached.dtype != dtype:
+        if (
+            seq_len > self._seq_len_cached
+            or self._cos_cached.device != device
+            or self._cos_cached.dtype != dtype
+        ):
             self._seq_len_cached = seq_len
             t = torch.arange(seq_len, device=device, dtype=torch.float32)
             freqs = torch.einsum("i,j->ij", t, self.inv_freq.to(dtype))
@@ -77,7 +88,9 @@ class RotaryEmbedding(torch.nn.Module):
             self._cos_cached = emb.cos()[None, :, None, :].to(dtype)
             self._sin_cached = emb.sin()[None, :, None, :].to(dtype)
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, offset: int = 0) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, q: torch.Tensor, k: torch.Tensor, offset: int = 0
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         self._update_cos_sin_tables(k.shape[1] + offset, device=k.device, dtype=k.dtype)
         return (
             apply_rotary_pos_emb(q, self._cos_cached, self._sin_cached, offset),

@@ -33,7 +33,9 @@ def evaluate(model, data, start_epoch, args, writer):
 
     model.eval()
 
-    data["val"].set_epoch(start_epoch)  # set epoch in process safe manner via sampler or shared_epoch
+    data["val"].set_epoch(
+        start_epoch
+    )  # set epoch in process safe manner via sampler or shared_epoch
     dataloader = data["val"].dataloader
 
     # NOTE: dataloader.num_batches = 0 corresponds to exhausting iterator by convention
@@ -68,7 +70,9 @@ def evaluate(model, data, start_epoch, args, writer):
             bs, seq_len = targets.shape
 
             targets = targets.reshape(-1)
-            total_loss = loss(out.reshape(-1, args.vocab_size), targets)  # [bs * seq_len]
+            total_loss = loss(
+                out.reshape(-1, args.vocab_size), targets
+            )  # [bs * seq_len]
 
             # cross entropy ignores -100 values in loss computation
             mask = targets != -100
@@ -108,19 +112,29 @@ def evaluate(model, data, start_epoch, args, writer):
         ]
 
         # meters on master will become global meters, other meters will remain local
-        losses_m, batch_time_m, data_time_m, sps_m, spspg_m, losses_seq_ci_m, losses_tok_ci_m = gather_meters(
-            meters, args
-        )
+        (
+            losses_m,
+            batch_time_m,
+            data_time_m,
+            sps_m,
+            spspg_m,
+            losses_seq_ci_m,
+            losses_tok_ci_m,
+        ) = gather_meters(meters, args)
 
     if args.distributed:
         dist.barrier()
 
     lower_seq, upper_seq, lower_tok, upper_tok = -1.0, -1.0, -1.0, -1.0
     if args.val_seq_ci:
-        lower_seq, upper_seq = losses_seq_ci_m.compute_bootstrap_ci(args.val_max_pop_ci, args.val_iter_ci)
+        lower_seq, upper_seq = losses_seq_ci_m.compute_bootstrap_ci(
+            args.val_max_pop_ci, args.val_iter_ci
+        )
 
     if args.val_tok_ci:
-        lower_tok, upper_tok = losses_tok_ci_m.compute_bootstrap_ci(args.val_max_pop_ci, args.val_iter_ci)
+        lower_tok, upper_tok = losses_tok_ci_m.compute_bootstrap_ci(
+            args.val_max_pop_ci, args.val_iter_ci
+        )
 
     num_seqs = sum([len(p) for p in losses_seq_ci_m.points])
     num_toks = sum([len(p) for p in losses_tok_ci_m.points])

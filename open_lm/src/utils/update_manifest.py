@@ -28,7 +28,9 @@ def parse_args(args):
         required=True,
         help="Manifest file to update.",
     )
-    parser.add_argument("--tmp-dir", type=str, default="/tmp", help="Temporary directory.")
+    parser.add_argument(
+        "--tmp-dir", type=str, default="/tmp", help="Temporary directory."
+    )
     args = parser.parse_args(args)
     return args
 

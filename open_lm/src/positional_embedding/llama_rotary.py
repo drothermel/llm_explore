@@ -125,7 +125,9 @@ class LLaMARotaryEmbedding(torch.nn.Module):
     def reset_parameters(self):
         pass
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, offset: int = 0) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, q: torch.Tensor, k: torch.Tensor, offset: int = 0
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         assert (
             q.shape[1] + offset <= self.freqs_cis.shape[0]
         ), f"offset {offset} or query sequence length {q.shape[1]}\

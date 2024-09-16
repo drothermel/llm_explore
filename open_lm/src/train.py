@@ -36,7 +36,17 @@ def backward(total_loss, scaler):
 
 
 def train_one_epoch(
-    model, data, loss, epoch, step, optimizer, scaler, scheduler, total_steps, args, tb_writer=None,
+    model,
+    data,
+    loss,
+    epoch,
+    step,
+    optimizer,
+    scaler,
+    scheduler,
+    total_steps,
+    args,
+    tb_writer=None,
 ):
     """Trains model for one epoch on the provided data.
 
@@ -51,7 +61,9 @@ def train_one_epoch(
 
     model.train()
 
-    data["train"].set_epoch(epoch)  # set epoch in process safe manner via sampler or shared_epoch
+    data["train"].set_epoch(
+        epoch
+    )  # set epoch in process safe manner via sampler or shared_epoch
     dataloader = data["train"].dataloader
     num_batches_per_epoch = dataloader.num_batches
     sample_digits = math.ceil(math.log(dataloader.num_samples + 1, 10))
@@ -76,7 +88,9 @@ def train_one_epoch(
             scheduler(step)
 
         if step >= total_steps:
-            logging.warning(f"step: {step} has reached/exceeded total_steps: {total_steps}. ending training.")
+            logging.warning(
+                f"step: {step} has reached/exceeded total_steps: {total_steps}. ending training."
+            )
             break
 
         try:
@@ -114,7 +128,9 @@ def train_one_epoch(
         else:
             # split up batch into accum_freq chunks -- if you have --batch-size 8 and --accum-freq 4
             # then you only process 2 items at a time. batch-size must be divisible by accume-freq.
-            assert args.per_gpu_batch_size % args.accum_freq == 0, "Per-GPU batch size must be divisible by accum_freq"
+            assert (
+                args.per_gpu_batch_size % args.accum_freq == 0
+            ), "Per-GPU batch size must be divisible by accum_freq"
             per_batch = args.per_gpu_batch_size // args.accum_freq
 
             inputs, targets = sample_chunk(texts, args)
@@ -140,7 +156,9 @@ def train_one_epoch(
                             logit_m.update(torch.mean(out).item())
 
                         local_loss = (
-                            loss(out.reshape(-1, args.vocab_size), targets_ii.reshape(-1))
+                            loss(
+                                out.reshape(-1, args.vocab_size), targets_ii.reshape(-1)
+                            )
                             * inputs_ii.shape[0]
                             / inputs.shape[0]
                         )
@@ -160,7 +178,9 @@ def train_one_epoch(
         if scaler is not None:
             if args.grad_clip_norm is not None:
                 scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm, norm_type=2.0)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), args.grad_clip_norm, norm_type=2.0
+                )
             scaler.step(optimizer)
             scaler.update()
         else:
@@ -168,7 +188,9 @@ def train_one_epoch(
                 if isinstance(model, FSDP):
                     model.clip_grad_norm_(args.grad_clip_norm, norm_type=2.0)
                 else:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm, norm_type=2.0)
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), args.grad_clip_norm, norm_type=2.0
+                    )
             optimizer.step()
         optim_step_time_m.update(time.time() - optim_step_start)
 
@@ -189,7 +211,11 @@ def train_one_epoch(
             # update the loss meter with the global loss tensor every iteration, so that the logging is of the avg of loss of the last
             # args.log_every_n_steps iterations
             losses_m.update(global_loss_tensor.item(), batch_size)
-            if i % args.log_every_n_steps == 0 or batch_count == num_batches_per_epoch or step == total_steps - 1:
+            if (
+                i % args.log_every_n_steps == 0
+                or batch_count == num_batches_per_epoch
+                or step == total_steps - 1
+            ):
                 num_samples = batch_count * batch_size * args.world_size
                 samples_per_epoch = dataloader.num_samples
                 percent_complete = 100.0 * batch_count / num_batches_per_epoch
@@ -236,7 +262,9 @@ def train_one_epoch(
                         tb_writer.add_scalar(name, val, step)
                     if args.wandb:
                         assert wandb is not None, "Please install wandb."
-                        wandb.log({name: val, "step": step, "tokens": log_data["tokens"]})
+                        wandb.log(
+                            {name: val, "step": step, "tokens": log_data["tokens"]}
+                        )
 
                 # resetting batch / data time meters per log window
                 batch_time_m.reset()

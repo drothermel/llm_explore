@@ -67,7 +67,9 @@ def init_distributed_device(args):
             else:
                 args.world_size = args.preset_world_size
                 if args.rank >= args.world_size:
-                    logging.info(f"Rank {args.rank} not needed with world size {args.world_size}. Exiting.")
+                    logging.info(
+                        f"Rank {args.rank} not needed with world size {args.world_size}. Exiting."
+                    )
                     exit(0)
 
             # SLURM var -> torch.distributed vars in case needed
@@ -83,9 +85,13 @@ def init_distributed_device(args):
         else:
             # DDP via torchrun, torch.distributed.launch
             # Note that this currently assumes that the world size is all gpus in a node.
-            assert args.preset_world_size is None, "--preset_world_size with torchrun is not currently supported."
+            assert (
+                args.preset_world_size is None
+            ), "--preset_world_size with torchrun is not currently supported."
             args.local_rank, _, _ = world_info_from_env()
-            torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url)
+            torch.distributed.init_process_group(
+                backend=args.dist_backend, init_method=args.dist_url
+            )
             args.world_size = torch.distributed.get_world_size()
             args.rank = torch.distributed.get_rank()
         args.distributed = True
