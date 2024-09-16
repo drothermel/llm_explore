@@ -97,7 +97,7 @@ def check_replacement_type(replacement, original):
     Taken from YACS: https://github.com/rbgirshick/yacs/blob/32d5e4ac300eca6cd3b839097dde39c4017a1070/yacs/config.py#L494
     """
     # The types must match (with some exceptions)
-    if type(original) == type(replacement):
+    if type(original) is type(replacement):
         return True
 
     # If either of them is None, accept the type.
