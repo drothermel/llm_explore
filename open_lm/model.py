@@ -11,8 +11,6 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
-import xformers.ops as xops
-
 from huggingface_hub import PyTorchModelHubMixin
 
 from open_lm.attention import get_attn_func, xformers_attn, torch_attn
@@ -225,10 +223,6 @@ class Block(nn.Module):
         self.head_dim = args.dim // args.n_heads
         self.attention = CustomAttn(layer_id, args)
         self._ffn_type = args.ffn_type
-        if args.ffn_type == "swiglu":
-            # this follows llama / lit llama -- go to multiple of 256
-            self.hidden_dim = 256 * ((int(2 * 4 * args.dim / 3) + 256 - 1) // 256)
-            self.feed_forward = xops.SwiGLU(args.dim, self.hidden_dim, args.dim, bias=False)
         elif args.ffn_type == "swiglu_torch":
             # this follows llama / lit llama -- go to multiple of 256
             self.hidden_dim = 256 * ((int(2 * 4 * args.dim / 3) + 256 - 1) // 256)
