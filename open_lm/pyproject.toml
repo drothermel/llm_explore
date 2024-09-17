@@ -16,6 +16,7 @@ dependencies = [
     "jsonlines>=4.0.0",
     "boto3>=1.35.19",
     "pytest==7.0.1",
+    "pysimdjson>=6.0.2",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"

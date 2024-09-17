@@ -159,6 +159,8 @@ py==1.11.0
     # via pytest-forked
 pyarrow==17.0.0
     # via datasets
+pysimdjson==6.0.2
+    # via open-lm
 pytest==7.0.1
     # via open-lm
     # via pytest-cov
