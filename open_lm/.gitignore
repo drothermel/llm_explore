@@ -6,5 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+tests/assets/source*
+tests/assets/shard*
+
 # venv
 .venv
