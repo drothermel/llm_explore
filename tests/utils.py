@@ -24,8 +24,8 @@ from transformers import (
     MaxLengthCriteria,
 )
 import wikipedia
-from composer.utils import dist, get_device
-from open_lm.utils.llm_foundry_wrapper import SimpleComposerOpenLMCausalLM
+#from composer.utils import dist, get_device
+#from open_lm.utils.llm_foundry_wrapper import SimpleComposerOpenLMCausalLM
 
 
 def download_val_data(name: str, root: str = None):
@@ -188,11 +188,13 @@ def _get_tokens_inputs(tokenizer, args, wiki_page=None, start_index=None):
 
 @torch.inference_mode()
 def run_model(open_lm, tokenizer, args, wiki_page=None, start_index=None):
-    dist.initialize_dist(get_device(None), timeout=600)
+    assert False, "This test is broken"
+    #dist.initialize_dist(get_device(None), timeout=600)
     input = _get_tokens_inputs(tokenizer, args, wiki_page=wiki_page, start_index=start_index)
-    composer_model = SimpleComposerOpenLMCausalLM(open_lm, tokenizer)
-    if torch.cuda.is_available():
-        composer_model = composer_model.cuda()
+    composer_model = None
+    #composer_model = SimpleComposerOpenLMCausalLM(open_lm, tokenizer)
+    #if torch.cuda.is_available():
+    #    composer_model = composer_model.cuda()
 
     generate_args = {
         "do_sample": args.temperature > 0,
@@ -208,12 +210,13 @@ def run_model(open_lm, tokenizer, args, wiki_page=None, start_index=None):
         generate_args["temperature"] = args.temperature
         generate_args["top_p"] = args.top_p
 
-    output = composer_model.generate(
-        input_ids=input["input_ids"],
-        **generate_args,
-    )
-    output = tokenizer.decode(output[0].cpu().numpy())
-    torch.distributed.destroy_process_group()
+    #output = composer_model.generate(
+    #    input_ids=input["input_ids"],
+    #    **generate_args,
+    #)
+    output = [None]
+    #output = tokenizer.decode(output[0].cpu().numpy())
+    #torch.distributed.destroy_process_group()
     return output
 
 
