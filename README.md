@@ -1,6 +1,8 @@
-# OpenLM
+# Stripped Down OpenLM
 
-![](/plots/logo.png)
+Try to remove as much complexity as we don't need, switch to Rye for env management.
+
+# OpenLM
 
 OpenLM is a minimal but performative language modeling (LM) repository, aimed to facilitate research on medium sized LMs. We have verified the performance of OpenLM up to 7B parameters and 256 GPUs.
 In contrast with other repositories such as Megatron, we depend only on PyTorch, XFormers, or Triton for our core modeling code.
