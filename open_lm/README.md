@@ -9,7 +9,7 @@ Follow instructions from the [rye project](https://rye.astral.sh/):
 # Install rye
 curl -sSf https://rye.astral.sh/get | bash
 
-# Add the following to your .bashrc equivalent
+# Add the following to your .bashrc equivalent (after conda path updates!)
 source "$HOME/.rye/env"
 ```
 
